@@ -63,3 +63,8 @@ Access the web chat at http://your-server-ip:3003.
 
 Verify that the bot joins the specified IRC and Discord channels.
 Ensure messages synchronize across platforms.
+
+RomDemon:
+<iframe width="560" height="315" src="https://www.youtube.com/embed/S_nkC_zK42g?si=UUKqNV3-tWM7CM-R" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+https://pacochat.psy-k.org/
