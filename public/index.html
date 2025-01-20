@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orbitron WebApp Client IRC Bridge Discord</title>
+ <meta property="og:title" content="Orbitron WebApp Client IRC Bridge Discord" />
+  <meta property="og:description" content="Una aplicación web avanzada para conectarte y comunicarte en tiempo real en la red IRC libera.chat. Y la Red Discord, hace de Bridge(Puente). Compatible con múltiples usuarios y conexiones independientes." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://pacochat.psy-k.org/" />
+  <meta property="og:image" content="https://pacochat.psy-k.org/pacochat.png" />
+  <meta property="og:locale" content="es_ES" />
+
+
+
+
+
+
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+
+  <style>
+    body {
+      font-family: 'Orbitron', sans-serif;
+    }
+    #emoji-container {
+      width: 100%;
+      height: 50px;
+      overflow: hidden;
+      position: relative;
+      margin-top: 10px;
+      background-color: #000;
+    }
+
+    .emoji {
+      position: absolute;
+      font-size: 24px;
+      white-space: nowrap;
+      animation: move-emoji linear infinite;
+    }
+
+    @keyframes move-emoji {
+      from {
+        transform: translateX(-100%);
+      }
+      to {
+        transform: translateX(100%);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="main-container">
+    <!-- Ventana de conversación -->
+    <div id="chat-box"></div>
+
+    <!-- Lista de usuarios -->
+    <div id="user-box"></div>
+  </div>
+
+  <!-- Contenedor de letras japonesas en animación -->
+  <div id="emoji-container"></div>
+
+  <!-- Contenedor de entrada -->
+  <div id="input-container">
+    <input type="text" id="message-input" placeholder="Escribe un mensaje...">
+    <button id="send-button">Enviar</button>
+  </div>
+
+  <!-- Control de velocidad -->
+  <div id="speed-control">
+    <label for="speed">Velocidad de animación:</label>
+    <input type="range" id="speed" min="1" max="10" value="5">
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // Configuración de Socket.IO para el chat
+    const socket = io();
+
+    // Referencias a elementos DOM
+    const chatBox = document.getElementById('chat-box');
+    const userBox = document.getElementById('user-box');
+    const messageInput = document.getElementById('message-input');
+    const sendButton = document.getElementById('send-button');
+    const emojiContainer = document.getElementById('emoji-container');
+    const speedControl = document.getElementById('speed');
+
+    // Lista de caracteres japoneses
+    const japaneseChars = [
+      "あ", "い", "う", "え", "お", "か", "き", "く", "け", "こ", 
+      "さ", "し", "す", "せ", "そ", "た", "ち", "つ", "て", "と", 
+      "な", "に", "ぬ", "ね", "の", "は", "ひ", "ふ", "へ", "ほ", 
+      "ま", "み", "む", "め", "も", "や", "ゆ", "よ", "ら", "り", "る", "れ", "ろ", "わ", "を", "ん"
+    ];
+
+    let lastEndPosition = 0; // Última posición final para controlar las distancias
+
+    // Crear una nueva cadena japonesa
+    function createJapaneseString() {
+      const stringLength = Math.floor(Math.random() * 5) + 3; // Longitud aleatoria de la cadena
+      let japaneseString = '';
+
+      for (let i = 0; i < stringLength; i++) {
+        japaneseString += japaneseChars[Math.floor(Math.random() * japaneseChars.length)];
+      }
+
+      const stringElement = document.createElement('span');
+      stringElement.classList.add('emoji');
+      stringElement.textContent = japaneseString;
+
+      // Posicionar el texto al inicio de la pantalla y al centro vertical
+      stringElement.style.left = `${lastEndPosition}px`;
+      stringElement.style.top = '50%';
+      stringElement.style.transform = 'translateY(-50%)';
+
+      // Duración de la animación ajustada por el control de velocidad
+      stringElement.style.animationDuration = `${11 - speedControl.value}s`;
+
+      emojiContainer.appendChild(stringElement);
+
+      // Calcular la nueva posición final para el próximo elemento
+      lastEndPosition += stringElement.offsetWidth + 50; // Añadir espacio entre cadenas
+
+      // Eliminar el texto después de que termine la animación
+      stringElement.addEventListener('animationend', () => {
+        stringElement.remove();
+        lastEndPosition -= stringElement.offsetWidth + 50; // Liberar el espacio
+      });
+    }
+
+    // Ajustar velocidad de la animación
+    function adjustSpeed() {
+      const currentStrings = document.querySelectorAll('.emoji');
+      currentStrings.forEach(string => {
+        string.style.animationDuration = `${11 - speedControl.value}s`;
+      });
+    }
+
+    // Crear nuevas cadenas japonesas a intervalos regulares
+    setInterval(createJapaneseString, 1000);
+
+    // Ajustar velocidad en tiempo real
+    speedControl.addEventListener('input', adjustSpeed);
+
+    // Enviar mensaje al servidor
+    function sendMessage() {
+      const message = messageInput.value.trim();
+      if (message) {
+        socket.emit('send message', message);
+        messageInput.value = '';
+      }
+    }
+
+    sendButton.addEventListener('click', sendMessage);
+
+    // Permitir enviar con Enter
+    messageInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        sendMessage();
+      }
+    });
+
+    // Recibir mensaje del servidor y mostrarlo en el chat
+    socket.on('chat message', (msg) => {
+      const messageElement = document.createElement('p');
+      messageElement.textContent = msg;
+      chatBox.appendChild(messageElement);
+      chatBox.scrollTop = chatBox.scrollHeight; // Desplazar hacia el último mensaje
+    });
+
+    // Recibir lista de usuarios conectados y actualizar el user-box
+    socket.on('user list', (userList) => {
+      userBox.innerHTML = ''; // Limpiar la lista existente
+
+      if (userList && userList.length > 0) {
+        userList.forEach((user) => {
+          const userElement = document.createElement('p');
+          userElement.textContent = user;
+          userBox.appendChild(userElement);
+        });
+      } else {
+        userBox.textContent = 'No hay usuarios conectados.';
+      }
+    });
+  </script>
+</body>
+</html>
