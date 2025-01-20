@@ -59,6 +59,6 @@ node server.js
 
 Test the Application
 
-Access the web chat at http://<your-server-ip>:3003.
+Access the web chat at http://your-server-ip:3003.
 Verify that the bot joins the specified IRC and Discord channels.
 Ensure messages synchronize across platforms.
