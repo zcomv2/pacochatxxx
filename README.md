@@ -46,6 +46,7 @@ sudo apt install nodejs npm git -y
 Clone the Repository
 
 git clone https://github.com/zcomv2/pacochatxxx.git
+
 cd pacochatxxx
 
 Install Node.js Dependencies
