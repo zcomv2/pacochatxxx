@@ -11,7 +11,15 @@ class Bot {
     this.urls = this.loadFile('lista-urls.txt');
     this.phrases = [];
     this.loadPhrasesFromURL('https://lab.psy-k.org/fotos/frases.txt', true);
-    this.startBot();
+
+    this.discordClient.once('ready', () => {
+      console.log('Discord client is ready. Starting bot tasks.');
+      this.startBot();
+    });
+
+    this.discordClient.on('error', (err) => {
+      console.error('Discord client encountered an error:', err);
+    });
   }
 
   loadFile(filename) {
@@ -78,21 +86,28 @@ class Bot {
     if (this.ircClient && this.ircClient.writable) {
       this.ircClient.write(`PRIVMSG #parati :${message}\r\n`);
     } else {
-      console.error('IRC client not writable.');
+      console.error('IRC client not writable or not initialized.');
     }
   }
 
   sendToDiscord(message) {
-    const channel = this.discordClient.channels.cache.get(this.discordChannelId);
-    if (channel) {
-      channel.send(message).catch(err => console.error('Error sending message to Discord:', err));
-    } else {
-      console.error('Discord channel not available or invalid ID.');
+    if (!this.discordClient || !this.discordClient.channels) {
+      console.error('Discord client not initialized or channels inaccessible.');
+      return;
     }
+
+    const channel = this.discordClient.channels.cache.get(this.discordChannelId);
+    if (!channel) {
+      console.error('Discord channel not found or invalid ID.');
+      return;
+    }
+
+    channel.send(message).catch(err => console.error('Error sending message to Discord:', err));
   }
 
   broadcastMessage(message) {
     try {
+      console.log(`Broadcasting message: ${message}`); // Debug
       this.io.emit('chat message', message);
       this.sendToIRC(message);
       this.sendToDiscord(message);
@@ -102,9 +117,18 @@ class Bot {
   }
 
   startBot() {
+    if (!this.ircClient || !this.ircClient.writable) {
+      console.error('IRC client not properly initialized. Bot will not start scheduled tasks.');
+      return;
+    }
+
+    // Debugging logs to ensure the bot is starting
+    console.log('Bot starting scheduled tasks for time, phrases, and URLs.');
+
     // Envía la hora cada minuto para pruebas
     setInterval(() => {
       try {
+        console.log('Announcing time...'); // Debug
         this.announceTime();
       } catch (err) {
         console.error('Error announcing time:', err);
@@ -114,6 +138,7 @@ class Bot {
     // Envía una frase aleatoria cada minuto para pruebas
     setInterval(() => {
       try {
+        console.log('Sharing random phrase...'); // Debug
         this.shareRandomPhrase();
       } catch (err) {
         console.error('Error sharing random phrase:', err);
@@ -123,6 +148,7 @@ class Bot {
     // Envía un enlace aleatorio cada minuto para pruebas
     setInterval(() => {
       try {
+        console.log('Sharing random URL...'); // Debug
         this.shareRandomUrl();
       } catch (err) {
         console.error('Error sharing random URL:', err);
@@ -132,3 +158,4 @@ class Bot {
 }
 
 module.exports = Bot;
+
