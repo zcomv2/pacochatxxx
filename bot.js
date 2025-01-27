@@ -133,7 +133,7 @@ class Bot {
       } catch (err) {
         console.error('Error announcing time:', err);
       }
-    }, 60000); // Cada minuto
+    }, 3600000); // Cada minuto
 
     // Envía una frase aleatoria cada minuto para pruebas
     setInterval(() => {
@@ -143,7 +143,7 @@ class Bot {
       } catch (err) {
         console.error('Error sharing random phrase:', err);
       }
-    }, 60000); // Cada minuto
+    }, 600000); // Cada minuto
 
     // Envía un enlace aleatorio cada minuto para pruebas
     setInterval(() => {
@@ -153,7 +153,7 @@ class Bot {
       } catch (err) {
         console.error('Error sharing random URL:', err);
       }
-    }, 60000); // Cada minuto
+    }, 36000000); // Cada minuto
   }
 }
 
