@@ -18,12 +18,13 @@ const IRC_PORT = 6697;
 const CHANNEL = "#parati";
 
 // Configuración del bot de Discord
-const DISCORD_TOKEN = "Your-Token-ID-HERE";
-const DISCORD_CHANNEL_ID = "Your-Channel-ID-HERE";
+const DISCORD_TOKEN = "YOUR_TOKEN_ID_HERE";
+const DISCORD_CHANNEL_ID = "YOUR_CHANNEL_ID_HERE";
 const discordClient = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
 
 let globalNickList = []; // Lista global de nicks actualizada
 
+// Inicializar conexión principal del bot de Discord y al IRC
 discordClient.once('ready', () => {
   console.log('Bot de Discord conectado y listo.');
 
@@ -39,7 +40,7 @@ discordClient.once('ready', () => {
     console.error('Error en la conexión IRC global:', err);
   });
 
-  // Actualizar lista de usuarios conectados cada 30 segundos
+  // Solicitar lista de nicks periódicamente
   setInterval(() => {
     try {
       ircClient.write(`NAMES ${CHANNEL}\r\n`);
@@ -56,8 +57,33 @@ discordClient.once('ready', () => {
         globalNickList = Array.from(new Set(users)); // Actualizar sin duplicados
         io.emit('user list', globalNickList); // Enviar la lista actualizada a todos los clientes
         console.log('Lista de nicks actualizada:', globalNickList);
+      } else if (message.includes(`PRIVMSG`)) {
+        const sender = message.split('!')[0].split(':')[1].trim();
+        const userMessage = message.split(`:`).slice(2).join(':').trim();
+
+        // Verificar si el mensaje ya contiene etiquetas y evitar duplicados
+        if (!userMessage.startsWith('[WebAppChat]') && !userMessage.startsWith('[Discord]')) {
+          io.emit('chat message', `[IRC] ${sender}: ${userMessage}`);
+          const discordChannel = discordClient.channels.cache.get(DISCORD_CHANNEL_ID);
+          if (discordChannel) {
+            discordChannel.send(`[IRC] ${sender}: ${userMessage}`).catch(err => console.error('Error enviando mensaje a Discord:', err));
+          }
+        }
       }
     });
+  });
+
+  // Manejar mensajes desde Discord
+  discordClient.on('messageCreate', async (message) => {
+    if (message.author.bot || message.channel.id !== DISCORD_CHANNEL_ID) return;
+
+    const discordMessage = `[Discord] ${message.author.username}: ${message.content}`;
+
+    // Reenviar a IRC y WebAppChat sin duplicar
+    io.emit('chat message', discordMessage);
+    if (ircClient.writable) {
+      ircClient.write(`PRIVMSG ${CHANNEL} :${discordMessage}\r\n`);
+    }
   });
 
   // Inicializar el bot
@@ -68,17 +94,61 @@ discordClient.once('ready', () => {
   bot.startBot();
 });
 
-discordClient.on('messageCreate', async (message) => {
-  if (message.author.bot || message.channel.id !== DISCORD_CHANNEL_ID) return;
+// Manejar conexiones desde la WebAppChat
+io.on('connection', (socket) => {
+  console.log('Un usuario se ha conectado.');
 
-  console.log(`Mensaje recibido en Discord: ${message.author.username}: ${message.content}`);
+  // Generar un nick único para el usuario
+  const userNick = `Tek${Math.floor(Math.random() * 100)}`;
 
-  // Enviar mensaje al canal IRC
-  const ircMessage = `PRIVMSG ${CHANNEL} :[Discord] ${message.author.username}: ${message.content}\r\n`;
-  ircClient.write(ircMessage);
+  // Crear conexión IRC para este usuario
+  const userIrcClient = tls.connect(IRC_PORT, IRC_SERVER, () => {
+    console.log(`Usuario ${userNick} conectado al IRC.`);
+    userIrcClient.write(`NICK ${userNick}\r\n`);
+    userIrcClient.write(`USER ${userNick} 0 * :WebAppChat User\r\n`);
+    userIrcClient.write(`JOIN ${CHANNEL}\r\n`);
+  });
 
-  // Emitir mensaje en Socket.IO para los clientes web
-  io.emit('chat message', `[Discord] ${message.author.username}: ${message.content}`);
+  userIrcClient.on('error', (err) => {
+    console.error(`Error en la conexión IRC para ${userNick}:`, err);
+  });
+
+  userIrcClient.on('data', (data) => {
+    const messages = data.toString().split('\r\n');
+    messages.forEach((message) => {
+      if (message.includes(`PRIVMSG`) && !message.includes(userNick)) {
+        const sender = message.split('!')[0].split(':')[1].trim();
+        const userMessage = message.split(`:`).slice(2).join(':').trim();
+        if (!userMessage.startsWith('[WebAppChat]') && !userMessage.startsWith('[Discord]')) {
+          io.emit('chat message', `[IRC] ${sender}: ${userMessage}`);
+        }
+      }
+    });
+  });
+
+  // Manejar mensajes enviados desde el cliente web
+  socket.on('send message', (msg) => {
+    if (userIrcClient && userIrcClient.writable) {
+      const formattedMessage = `[WebAppChat] ${userNick}: ${msg}`;
+      userIrcClient.write(`PRIVMSG ${CHANNEL} :${formattedMessage}\r\n`);
+
+      // Emitir mensaje localmente solo una vez
+      socket.emit('chat message', formattedMessage);
+
+      // Enviar el mensaje también a Discord
+      const discordChannel = discordClient.channels.cache.get(DISCORD_CHANNEL_ID);
+      if (discordChannel) {
+        discordChannel.send(formattedMessage).catch(err => console.error('Error enviando mensaje a Discord:', err));
+      }
+    } else {
+      console.error('La conexión IRC del usuario no está disponible.');
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log(`Usuario ${userNick} desconectado.`);
+    if (userIrcClient) userIrcClient.end();
+  });
 });
 
 // Manejar errores en Discord
@@ -96,3 +166,4 @@ const PORT = 3003;
 server.listen(PORT, () => {
   console.log(`Servidor ejecutándose en http://localhost:${PORT}`);
 });
+
