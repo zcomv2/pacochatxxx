@@ -35,7 +35,11 @@ Installed software:
 Node.js (v18 or higher).
 npm (Node Package Manager).
 Git.
+
 A registered bot on the Discord Developer Portal.
+
+configure and put the Toke ID data of your bot in its corresponding place, and do the same with the Channel ID of your Discord channel.
+
 Installation Steps:
 
 Update System and Install Dependencies
@@ -51,11 +55,11 @@ cd pacochatxxx
 
 Install Node.js Dependencies
 
-npm install express socket.io discord.js dotenv
+npm install 
 
 Run the Application
 
-node server.js
+npm start
 
 Test the Application
 
