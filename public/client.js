@@ -1,8 +1,10 @@
 const socket = io();
 
-// Escuchar mensajes del canal IRC y mostrarlos en el chat
+// Escuchar mensajes del canal IRC, Discord y WebAppChat y mostrarlos en el chat
 socket.on('chat message', (msg) => {
-  addMessageToChatBox(msg);
+  if (!msg.startsWith('[WebAppChat]')) {
+    addMessageToChatBox(msg);
+  }
 });
 
 // Escuchar y actualizar la lista de usuarios conectados
@@ -54,31 +56,8 @@ function sendMessage() {
   const message = input.value.trim();
 
   if (message) {
-    // Verificar si el mensaje es un comando para cambiar el nick
-    if (message.startsWith('$nick ')) {
-      const newNick = message.split('$nick ')[1].trim();
-      if (newNick) {
-        // Enviar comando para cambiar el nick al servidor
-        socket.emit('change nick', newNick);
-        addMessageToChatBox(`Intentando cambiar el nick a: ${newNick}`);
-      } else {
-        addMessageToChatBox('Error: Debes especificar un nuevo nick.');
-      }
-    } else {
-      // Enviar mensaje normal al servidor
-      socket.emit('send message', message);
-    }
-
-    input.value = '';
+    socket.emit('send message', message); // Enviar mensaje al servidor
+    addMessageToChatBox(`[Tú]: ${message}`); // Mostrar el mensaje solo como enviado localmente
+    input.value = ''; // Limpiar el campo de entrada
   }
 }
-
-// Escuchar confirmación de cambio de nick desde el servidor
-socket.on('nick changed', (newNick) => {
-  addMessageToChatBox(`Tu nick ha sido cambiado a: ${newNick}`);
-});
-
-// Escuchar error en cambio de nick
-socket.on('nick change error', (error) => {
-  addMessageToChatBox(`Error al cambiar el nick: ${error}`);
-});
