@@ -1,0 +1,26 @@
+{
+  "name": "paco-chatxxx",
+  "version": "1.0.0",
+  "description": "Aplicación de chat que integra WebAppChat, IRC y Discord.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "chat",
+    "irc",
+    "discord",
+    "webappchat"
+  ],
+  "author": "Korman Studios Digital Media Solutions",
+  "license": "GPLV.3",
+  "dependencies": {
+    "discord.js": "^14.11.0",
+    "express": "^4.18.2",
+    "socket.io": "^4.6.1",
+    "tls": "^0.0.1",
+    "crypto": "^1.0.1"
+  },
+  "devDependencies": {}
+}
+
